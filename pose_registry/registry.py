@@ -1,16 +1,25 @@
 # pose_registry/registry.py
 
 from .dhanurasana import Dhanurasana
-# Import more poses here as you add them
+from .vrikshasana import Vrikshasana
+from .adho_mukha_svanasana import AdhoMukhaSvanasana
+from .bhujangasana import Bhujangasana
+from .chakrasana import Chakrasana
+from .trikonasana import Trikonasana
 
 # Registry mapping pose names to classes
+
 pose_classes = {
     "Dhanurasana": Dhanurasana(),
-    # Add others
+    "Vrikshasana": Vrikshasana(),
+    "AdhoMukhaSvanasana": AdhoMukhaSvanasana(),
+    "Bhujangasana": Bhujangasana(),
+    "Chakrasana": Chakrasana(),
+    "Trikonasana": Trikonasana(),
 }
 
-def get_pose_corrections(pose_name, angles_dict):
+def get_pose_corrections(pose_name: str, angles: dict) -> list:
     pose = pose_classes.get(pose_name)
-    if pose is None:
-        return [f"No correction rules defined for: {pose_name}"]
-    return pose.get_feedback(angles_dict)
+    if not pose:
+        return []
+    return pose.check_pose(angles)

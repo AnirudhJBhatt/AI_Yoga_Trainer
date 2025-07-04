@@ -47,7 +47,6 @@ def draw_landmarks_with_confidence(image, landmarks, width, height):
         vis = lm.visibility
         color = (0, 255, 0) if vis > 0.8 else (0, 255, 255) if vis > 0.5 else (0, 0, 255)
         cv2.circle(image, (x, y), 6, color, -1)
-        cv2.putText(image, f"{vis:.2f}", (x + 4, y - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
 
 cap = cv2.VideoCapture(0)
 cv2.namedWindow("Yoga Pose Detection", cv2.WINDOW_NORMAL)
