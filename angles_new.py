@@ -24,17 +24,47 @@ key_point_indices = {
     "right_hip_angle": (12, 24, 26)
 }
 
+# Checkbox state for each angle
+angle_states = {key: False for key in key_point_indices}
+checkbox_positions = {}
+
+# Mouse callback to toggle checkbox state
+def checkbox_click(event, x, y, flags, param):
+    if event == cv2.EVENT_LBUTTONDOWN:
+        for joint, (bx, by) in checkbox_positions.items():
+            if bx <= x <= bx + 20 and by <= y <= by + 20:
+                angle_states[joint] = not angle_states[joint]
+
 def calculate_angle(p1, p2, p3):
-    v1 = np.array([p1[0]-p2[0], p1[1]-p2[1], p1[2]-p2[2]])
-    v2 = np.array([p3[0]-p2[0], p3[1]-p2[1], p3[2]-p2[2]])
+    v1 = np.array([p1[0] - p2[0], p1[1] - p2[1], p1[2] - p2[2]])
+    v2 = np.array([p3[0] - p2[0], p3[1] - p2[1], p3[2] - p2[2]])
     if np.linalg.norm(v1) == 0 or np.linalg.norm(v2) == 0:
         return 0.0
     cos_angle = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
     cos_angle = np.clip(cos_angle, -1.0, 1.0)
     return np.degrees(np.arccos(cos_angle))
 
-cap = cv2.VideoCapture(0)
+# Draw checkbox panel on the frame
+def draw_checkboxes(frame):
+    x_start, y_start = 10, 10
+    spacing = 30
+    for idx, (joint, state) in enumerate(angle_states.items()):
+        y_pos = y_start + idx * spacing
+        checkbox_positions[joint] = (x_start, y_pos)
+
+        # Draw filled checkbox
+        color = (0, 255, 0) if state else (255, 255, 255)
+        cv2.rectangle(frame, (x_start, y_pos), (x_start + 20, y_pos + 20), color, -1)
+        cv2.rectangle(frame, (x_start, y_pos), (x_start + 20, y_pos + 20), (0, 0, 0), 2)
+
+        # Draw label
+        label = joint.replace("_angle", "").replace("_", " ").title()
+        cv2.putText(frame, label, (x_start + 30, y_pos + 15),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+
+cap = cv2.VideoCapture(1)
 cv2.namedWindow("Joint Angle Visualization", cv2.WINDOW_NORMAL)
+cv2.setMouseCallback("Joint Angle Visualization", checkbox_click)
 prev_time = time.time()
 
 while cap.isOpened():
@@ -51,6 +81,9 @@ while cap.isOpened():
         mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
         for key, (p1_idx, p2_idx, p3_idx) in key_point_indices.items():
+            if not angle_states.get(key, False):
+                continue
+
             if (landmarks[p1_idx].visibility > 0.5 and
                 landmarks[p2_idx].visibility > 0.5 and
                 landmarks[p3_idx].visibility > 0.5):
@@ -61,15 +94,23 @@ while cap.isOpened():
                 angle = calculate_angle(p1, p2, p3)
                 x, y = int(landmarks[p2_idx].x * w), int(landmarks[p2_idx].y * h)
 
-                # Draw angle text
-                cv2.putText(frame, f"{int(angle)}", (x - 20, y - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
-                            
+                # Draw angle arc and label
+                cv2.line(frame, (int(p1[0]), int(p1[1])), (x, y), (255, 255, 0), 2)
+                cv2.line(frame, (int(p3[0]), int(p3[1])), (x, y), (255, 255, 0), 2)
+                cv2.circle(frame, (x, y), 6, (255, 0, 255), -1)
+                # cv2.ellipse(frame, (x, y), (30, 30), 0, 0, int(angle), (255, 0, 0), 2)
+                cv2.putText(frame, f"{key}: {int(angle)}°", (x + 10, y - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
+    # Draw panel of checkboxes
+    draw_checkboxes(frame)
+
+    # FPS
     curr_time = time.time()
     fps = 1 / (curr_time - prev_time)
     prev_time = curr_time
-    cv2.putText(frame, f'FPS: {int(fps)}', (10, h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+    cv2.putText(frame, f'FPS: {int(fps)}', (10, h - 10),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
 
     cv2.imshow("Joint Angle Visualization", frame)
 
